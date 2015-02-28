@@ -1,0 +1,21 @@
+{
+  "name": "ko-dragdrop",
+  "version": "1.0.0",
+  "description": "A drag and drop binding for knockout (no jQuery)",
+  "main": "output/ko-dragdrop.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pgbross/ko-dragdrop.git"
+  },
+  "keywords": [
+    "drag and drop",
+    "knockout",
+    "binding"
+  ],
+  "author": "Philip Ross <philip@satchel.scot>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pgbross/ko-dragdrop/issues"
+  },
+  "homepage": "https://github.com/pgbross/ko-dragdrop"
+}
