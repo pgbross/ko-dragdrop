@@ -36,7 +36,7 @@
   "jspm": {
     "directories": {
       "lib": "dist",
-      "packages": "jspm_packages"
+      "packages": "examples/jspm_packages"
     },
     "dependencies": {
       "knockout": "npm:knockout@^3.3.0"

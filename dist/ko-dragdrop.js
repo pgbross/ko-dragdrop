@@ -24,6 +24,38 @@
 
   var ko = _interopRequire(_knockout);
 
+  if (!Object.assign) {
+  Object.defineProperty(Object, 'assign', {
+    enumerable: false,
+    configurable: true,
+    writable: true,
+    value: function(target, firstSource) {
+      'use strict';
+      if (target === undefined || target === null) {
+        throw new TypeError('Cannot convert first argument to object');
+      }
+
+      var to = Object(target);
+      for (var i = 1; i < arguments.length; i++) {
+        var nextSource = arguments[i];
+        if (nextSource === undefined || nextSource === null) {
+          continue;
+        }
+
+        var keysArray = Object.keys(Object(nextSource));
+        for (var nextIndex = 0, len = keysArray.length; nextIndex < len; nextIndex++) {
+          var nextKey = keysArray[nextIndex];
+          var desc = Object.getOwnPropertyDescriptor(nextSource, nextKey);
+          if (desc !== undefined && desc.enumerable) {
+            to[nextKey] = nextSource[nextKey];
+          }
+        }
+      }
+      return to;
+    }
+  });
+}
+
   (function (ELEMENT, PREFIX) {
     ELEMENT.matches = ELEMENT.matches || ELEMENT[PREFIX + "MatchesSelector"];
 
@@ -168,10 +200,8 @@
         value: function leave(event) {
           var newEvent = event;
           if (event) {
-            newEvent = Object.create(event, {
-              target: {
-                value: this.element
-              }
+            newEvent = Object.assign({},event, {
+              target:  this.element
             })
             //event.target = this.element
             ;
@@ -305,10 +335,8 @@
           });
 
           forEach(zones, function (zone) {
-            var newEvent = Object.create(event, {
-              target: {
-                value: zone.element
-              }
+            var newEvent = Object.assign({},event, {
+              target: zone.element   
             });
             // event.target = zone.element
             zone.update(newEvent, that.data);
@@ -548,7 +576,7 @@
 
             var overlay = document.createElement("div");
 
-            overlay.classList = "drag-overlay";
+            overlay.classList.add("drag-overlay");
             overlay.setAttribute("unselectable", "on");
             overlay.style["z-index"] = 9999;
             overlay.style.position = "fixed";
@@ -625,11 +653,8 @@
               dragElement.remove();
               overlay.parentNode.removeChild(overlay);
 
-              var newEvent = Object.create(event, {
-                target: {
-                  value: document.elementFromPoint(upEvent.clientX, upEvent.clientY)
-                }
-              });
+              var newEvent = Object.assign({},event, {
+                target:  document.elementFromPoint(upEvent.clientX, upEvent.clientY)              });
 
               draggable.drop(newEvent);
 
