@@ -17,5 +17,20 @@
   "bugs": {
     "url": "https://github.com/pgbross/ko-dragdrop/issues"
   },
-  "homepage": "https://github.com/pgbross/ko-dragdrop"
+  "homepage": "https://github.com/pgbross/ko-dragdrop",
+  "devDependencies": {
+    "babel": "^4.6.1",
+    "conventional-changelog": "0.0.11",
+    "del": "^1.1.1",
+    "gulp": "^3.8.11",
+    "gulp-babel": "^4.0.0",
+    "gulp-bump": "^0.2.2",
+    "gulp-jshint": "^1.9.2",
+    "jshint-stylish": "^1.0.1",
+    "object.assign": "^1.1.1",
+    "require-dir": "^0.1.0",
+    "run-sequence": "^1.0.2",
+    "vinyl-paths": "^1.0.0",
+    "yargs": "^3.4.4"
+  }
 }
