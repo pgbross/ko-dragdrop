@@ -32,5 +32,14 @@
     "run-sequence": "^1.0.2",
     "vinyl-paths": "^1.0.0",
     "yargs": "^3.4.4"
+  },
+  "jspm": {
+    "directories": {
+      "lib": "dist",
+      "packages": "jspm_packages"
+    },
+    "dependencies": {
+      "knockout": "npm:knockout@^3.3.0"
+    }
   }
 }

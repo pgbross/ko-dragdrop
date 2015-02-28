@@ -1,3 +1,5 @@
+// ko-dragdrop  version 1.0.0
+
 import ko from 'knockout'
 
 (function(ELEMENT, PREFIX) {

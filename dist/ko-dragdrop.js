@@ -3,7 +3,10 @@
     define(["exports", "knockout"], factory);
   } else if (typeof exports !== "undefined") {
     factory(exports, require("knockout"));
-  }
+  } else {
+        // <script> tag: use the global `ko` and `jQuery`
+        factory(null,ko);
+    }
 })(function (exports, _knockout) {
   "use strict";
 
@@ -16,6 +19,8 @@
   var _prototypeProperties = function (child, staticProps, instanceProps) { if (staticProps) Object.defineProperties(child, staticProps); if (instanceProps) Object.defineProperties(child.prototype, instanceProps); };
 
   var _classCallCheck = function (instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } };
+
+  // ko-dragdrop  version 1.0.0
 
   var ko = _interopRequire(_knockout);
 
@@ -393,7 +398,7 @@
           accepts.push(options.name);
         }
 
-        element.addClass("drop-zone");
+        addClass(element,"drop-zone");
 
         var zone = new DropZone({
           element: element,
@@ -457,10 +462,17 @@
         });
 
         function matchInput(el) {
+          try{
+            if( !el.matches){return true}
           if (!el.matches("button") || !el.matches("textarea") || !el.matches("input")) {
             return false;
           }
           return true;
+        }
+        catch(e){
+          console.dir(e)
+          return false
+        }
         }
 
         function createCloneProxyElement() {
