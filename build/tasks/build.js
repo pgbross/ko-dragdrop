@@ -11,11 +11,17 @@ gulp.task('build-umd', function () {
     .pipe(gulp.dest(paths.output))
 })
 
+gulp.task('buildAll', function(callback) {
+  return runSequence(
+    ['build-umd'],
+    callback
+  )
+})
 
 gulp.task('build', function(callback) {
   return runSequence(
     'clean',
-    ['build-umd'],
+    ['buildAll'],
     callback
   )
 })

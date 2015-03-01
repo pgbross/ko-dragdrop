@@ -1,6 +1,6 @@
 {
   "name": "ko-dragdrop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A drag and drop binding for knockout (no jQuery)",
   "main": "output/ko-dragdrop.js",
   "repository": {

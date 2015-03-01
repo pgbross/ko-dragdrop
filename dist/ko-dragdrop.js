@@ -3,10 +3,7 @@
     define(["exports", "knockout"], factory);
   } else if (typeof exports !== "undefined") {
     factory(exports, require("knockout"));
-  } else {
-        // <script> tag: use the global `ko` and `jQuery`
-        factory(null,ko);
-    }
+  }
 })(function (exports, _knockout) {
   "use strict";
 
@@ -20,50 +17,26 @@
 
   var _classCallCheck = function (instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } };
 
-  // ko-dragdrop  version 1.0.0
+  // ko-dragdrop  version 1.1.0
 
   var ko = _interopRequire(_knockout);
 
-  if (!Object.assign) {
-  Object.defineProperty(Object, 'assign', {
-    enumerable: false,
-    configurable: true,
-    writable: true,
-    value: function(target, firstSource) {
-      'use strict';
-      if (target === undefined || target === null) {
-        throw new TypeError('Cannot convert first argument to object');
+  var Matches = (function (ELEMENT, PREFIX) {
+    var key = ELEMENT.matches ? "matches" : PREFIX + "MatchesSelector";
+    return function (el, selector) {
+      if (!el[key]) {
+        return false;
       }
+      return el[key](selector);
+    };
+  })(Element.prototype, (window.getComputedStyle && [].join.call(getComputedStyle(document.documentElement, "")).match(/-(moz|ms|webkit)-/) || [])[1]);
 
-      var to = Object(target);
-      for (var i = 1; i < arguments.length; i++) {
-        var nextSource = arguments[i];
-        if (nextSource === undefined || nextSource === null) {
-          continue;
-        }
-
-        var keysArray = Object.keys(Object(nextSource));
-        for (var nextIndex = 0, len = keysArray.length; nextIndex < len; nextIndex++) {
-          var nextKey = keysArray[nextIndex];
-          var desc = Object.getOwnPropertyDescriptor(nextSource, nextKey);
-          if (desc !== undefined && desc.enumerable) {
-            to[nextKey] = nextSource[nextKey];
-          }
-        }
-      }
-      return to;
-    }
-  });
-}
-
-  (function (ELEMENT, PREFIX) {
-    ELEMENT.matches = ELEMENT.matches || ELEMENT[PREFIX + "MatchesSelector"];
-
-    ELEMENT.closest = ELEMENT.closest || function (selector) {
+  var Closest = (function (ELEMENT) {
+    var closest = ELEMENT.closest || function (selector) {
       var node = this;
 
       while (node) {
-        if (node.matches(selector)) {
+        if (Matches(node, selector)) {
           return node;
         } else {
           node = node.parentElement;
@@ -72,7 +45,11 @@
 
       return null;
     };
-  })(Element.prototype, (window.getComputedStyle && [].join.call(getComputedStyle(document.documentElement, "")).match(/-(moz|ms|webkit)-/) || [])[1]);
+
+    return function (el, selector) {
+      return closest.call(el, selector);
+    };
+  })(Element.prototype);
 
   function addClass(el, className) {
     if (el.classList) {
@@ -94,8 +71,8 @@
     var rect = el.getBoundingClientRect();
 
     return {
-      top: rect.top + document.body.scrollTop,
-      left: rect.left + document.body.scrollLeft
+      top: rect.top, //+ document.body.scrollTop,
+      left: rect.left //+ document.body.scrollLeft
     };
   }
 
@@ -117,7 +94,6 @@
       init: {
         value: function init(args) {
           this.element = args.element;
-          this.$element = args.element;
           this.data = args.data;
           this.dragEnter = args.dragEnter;
           this.dragOver = args.dragOver;
@@ -131,14 +107,14 @@
       },
       refreshDomInfo: {
         value: function refreshDomInfo() {
-          var $element = this.$element;
-          this.hidden = $element.style.display === "none";
+          var element = this.element;
+          this.hidden = element.style.display === "none";
           if (!this.hidden) {
-            var offset = Offset($element);
+            var offset = Offset(element);
             this.top = offset.top;
             this.left = offset.left;
-            this.width = $element.offsetWidth;
-            this.height = $element.offsetHeight;
+            this.width = element.offsetWidth;
+            this.height = element.offsetHeight;
           }
         },
         writable: true,
@@ -150,17 +126,10 @@
             return false;
           }
 
-          if (x < this.left || y < this.top) {
+          if (x < this.left || y < this.top || this.left + this.width < x || this.top + this.height < y) {
             return false;
           }
 
-          if (this.left + this.width < x) {
-            return false;
-          }
-
-          if (this.top + this.height < y) {
-            return false;
-          }
           return true;
         },
         writable: true,
@@ -168,7 +137,7 @@
       },
       update: {
         value: function update(event, data) {
-          if (this.isInside(event.pageX, event.pageY)) {
+          if (this.isInside(event.clientX, event.clientY)) {
             if (!this.inside) {
               this.enter(event, data);
             }
@@ -198,17 +167,12 @@
       },
       leave: {
         value: function leave(event) {
-          var newEvent = event;
           if (event) {
-            newEvent = Object.assign({},event, {
-              target:  this.element
-            })
-            //event.target = this.element
-            ;
+            event.zoneTarget = this.element;
           }
 
           if (this.inside && this.dragLeave) {
-            this.dragLeave(newEvent, this.data);
+            this.dragLeave(event, this.data);
           }
           this.active = false;
           this.inside = false;
@@ -242,15 +206,15 @@
         value: function updateStyling() {
           if (this.dirty) {
             if (this.active) {
-              this.$element.classList.add("drag-over");
+              addClass(this.element, "drag-over");
             } else {
-              this.$element.classList.remove("drag-over");
+              removeClass(this.element, "drag-over");
             }
 
             if (this.inside && !this.active) {
-              this.$element.classList.add("drop-rejected");
+              addClass(this.element, "drop-rejected");
             } else {
-              this.$element.classList.remove("drop-rejected");
+              removeClass(this.element, "drop-rejected");
             }
           }
           this.dirty = false;
@@ -270,7 +234,7 @@
       _classCallCheck(this, DragElement);
 
       this.element = element;
-      this.element.classList.add("drag-element");
+      addClass(this.element, "drag-element");
       this.element.style.position = "fixed";
       this.element.style["z-index"] = 9998;
 
@@ -284,8 +248,8 @@
       updatePosition: {
         value: function updatePosition(event) {
           // console.log({x: event.pageX, y: event.pageY})
-          this.element.style.top = event.pageY - document.body.scrollTop + "px";
-          this.element.style.left = event.pageX - document.body.scrollLeft + "px";
+          this.element.style.top = event.clientY /*- document.body.scrollTop*/ + "px";
+          this.element.style.left = event.clientX /*- document.body.scrollLeft*/ + "px";
         },
         writable: true,
         configurable: true
@@ -335,11 +299,8 @@
           });
 
           forEach(zones, function (zone) {
-            var newEvent = Object.assign({},event, {
-              target: zone.element   
-            });
-            // event.target = zone.element
-            zone.update(newEvent, that.data);
+            event.zoneTarget = zone.element;
+            zone.update(event, that.data);
           });
 
           forEach(dropZones[name], function (zone) {
@@ -377,14 +338,14 @@
         configurable: true
       },
       drop: {
-        value: function drop(event) {
+        value: function drop(event, target) {
           var name = this.name;
-          var dropZoneElement = event.target.closest(".drop-zone");
+          var dropZoneElement = Closest(target, ".drop-zone");
           var activeZones = filter(dropZones[name], function (zone) {
             return zone.active;
           });
           var winningDropZone = filter(activeZones, function (zone) {
-            return zone.$element === dropZoneElement;
+            return zone.element === dropZoneElement;
           })[0];
 
           forEach(dropZones[name].concat(eventZones[name]), function (zone) {
@@ -396,7 +357,7 @@
           });
 
           if (this.dragEnd) {
-            this.dragEnd(this.data, event);
+            this.dragEnd(this.data, event, target);
           }
 
           if (winningDropZone && winningDropZone.drop) {
@@ -426,7 +387,7 @@
           accepts.push(options.name);
         }
 
-        addClass(element,"drop-zone");
+        addClass(element, "drop-zone");
 
         var zone = new DropZone({
           element: element,
@@ -490,25 +451,19 @@
         });
 
         function matchInput(el) {
-          try{
-            if( !el.matches){return true}
-          if (!el.matches("button") || !el.matches("textarea") || !el.matches("input")) {
+          if (!Matches(el, "button") || !Matches(el, "textarea") || !Matches(el, "input")) {
             return false;
           }
           return true;
         }
-        catch(e){
-          console.dir(e)
-          return false
-        }
-        }
 
         function createCloneProxyElement() {
           var dragProxy = element.cloneNode(true);
+          var style = window.getComputedStyle(element);
           element.parentNode.appendChild(dragProxy);
 
-          dragProxy.style.height = element.height;
-          dragProxy.style.width = element.width;
+          dragProxy.style.height = style.height;
+          dragProxy.style.width = style.width;
           dragProxy.style.opacity = 70 / 100;
           dragProxy.style.filter = "alpha(opacity=70";
 
@@ -576,7 +531,7 @@
 
             var overlay = document.createElement("div");
 
-            overlay.classList.add("drag-overlay");
+            addClass(overlay, "drag-overlay");
             overlay.setAttribute("unselectable", "on");
             overlay.style["z-index"] = 9999;
             overlay.style.position = "fixed";
@@ -584,8 +539,9 @@
             overlay.style.left = 0;
             overlay.style.right = 0;
             overlay.style.bottom = 0;
-            overlay.style["background-color"] = "cyan";
-            overlay.style.opacity = 0.1;
+            overlay.style.cursor = "move";
+            overlay.style["background-color"] = "#fff";
+            overlay.style.opacity = 0;
             overlay.style.filter = "alpha(apacity=0)";
             overlay.style["-webkit-user-select"] = "none";
             overlay.style["-moz-user-select"] = "-moz-none";
@@ -652,11 +608,7 @@
               clearTimeout(dragTimer);
               dragElement.remove();
               overlay.parentNode.removeChild(overlay);
-
-              var newEvent = Object.assign({},event, {
-                target:  document.elementFromPoint(upEvent.clientX, upEvent.clientY)              });
-
-              draggable.drop(newEvent);
+              draggable.drop(upEvent, document.elementFromPoint(upEvent.clientX, upEvent.clientY));
 
               document.removeEventListener("selectstart", onDocumentSelectStart, false);
               event.stopPropagation();

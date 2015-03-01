@@ -2,25 +2,37 @@
 
 import ko from 'knockout'
 
-(function(ELEMENT, PREFIX) {
-  ELEMENT.matches = ELEMENT.matches || ELEMENT[PREFIX + 'MatchesSelector'];
+var Matches = (function(ELEMENT, PREFIX) {
+  let key = ELEMENT.matches ? 'matches' : PREFIX + 'MatchesSelector'
+  return function(el, selector) {
+    if (!el[key]) {
+      return false
+    }
+    return el[key](selector)
 
-  ELEMENT.closest = ELEMENT.closest || function(selector) {
-    var node = this;
+  }
+})(Element.prototype, (window.getComputedStyle && [].join.call(getComputedStyle(document.documentElement, '')).match(/-(moz|ms|webkit)-/) || [])[1])
+
+var Closest = (function(ELEMENT) {
+  let closest = ELEMENT.closest || function(selector) {
+    var node = this
 
     while (node) {
-      if (node.matches(selector)) {
+      if (Matches(node, selector)) {
         return node
       } else {
         node = node.parentElement
       }
     }
 
-    return null;
-  };
-})(
-  Element.prototype, (window.getComputedStyle && [].join.call(getComputedStyle(document.documentElement, '')).match(/-(moz|ms|webkit)-/) || [])[1]
-)
+    return null
+  }
+
+  return function(el, selector) {
+    return closest.call(el, selector)
+  }
+
+})(Element.prototype)
 
 function addClass(el, className) {
   if (el.classList) {
@@ -42,8 +54,8 @@ function Offset(el) {
   var rect = el.getBoundingClientRect()
 
   return {
-    top: rect.top + document.body.scrollTop,
-    left: rect.left + document.body.scrollLeft
+    top: rect.top, //+ document.body.scrollTop,
+    left: rect.left //+ document.body.scrollLeft
   }
 }
 
@@ -61,7 +73,6 @@ class Zone {
 
   init(args) {
     this.element = args.element
-    this.$element = args.element
     this.data = args.data
     this.dragEnter = args.dragEnter
     this.dragOver = args.dragOver
@@ -72,14 +83,14 @@ class Zone {
   }
 
   refreshDomInfo() {
-    var $element = this.$element
-    this.hidden = $element.style.display === 'none'
+    var element = this.element
+    this.hidden = element.style.display === 'none'
     if (!this.hidden) {
-      var offset = Offset($element)
+      var offset = Offset(element)
       this.top = offset.top
       this.left = offset.left
-      this.width = $element.offsetWidth
-      this.height = $element.offsetHeight
+      this.width = element.offsetWidth
+      this.height = element.offsetHeight
     }
   }
 
@@ -88,22 +99,15 @@ class Zone {
       return false
     }
 
-    if (x < this.left || y < this.top) {
+    if (x < this.left || y < this.top || (this.left + this.width < x) || (this.top + this.height < y)) {
       return false
     }
 
-    if (this.left + this.width < x) {
-      return false
-    }
-
-    if (this.top + this.height < y) {
-      return false
-    }
     return true
   }
 
   update(event, data) {
-    if (this.isInside(event.pageX, event.pageY)) {
+    if (this.isInside(event.clientX, event.clientY)) {
       if (!this.inside) {
         this.enter(event, data)
       }
@@ -127,18 +131,12 @@ class Zone {
   }
 
   leave(event) {
-    let newEvent = event
     if (event) {
-      newEvent = Object.create(event, {
-          target: {
-            value: this.element
-          }
-        })
-        //event.target = this.element
+      event.zoneTarget = this.element
     }
 
     if (this.inside && this.dragLeave) {
-      this.dragLeave(newEvent, this.data)
+      this.dragLeave(event, this.data)
     }
     this.active = false
     this.inside = false
@@ -161,15 +159,15 @@ class DropZone extends Zone {
   updateStyling() {
     if (this.dirty) {
       if (this.active) {
-        this.$element.classList.add('drag-over')
+        addClass(this.element, 'drag-over')
       } else {
-        this.$element.classList.remove('drag-over')
+        removeClass(this.element, 'drag-over')
       }
 
       if (this.inside && !this.active) {
-        this.$element.classList.add('drop-rejected')
+        addClass(this.element, 'drop-rejected')
       } else {
-        this.$element.classList.remove('drop-rejected')
+        removeClass(this.element, 'drop-rejected')
       }
     }
     this.dirty = false
@@ -179,7 +177,7 @@ class DropZone extends Zone {
 class DragElement {
   constructor(element) {
     this.element = element
-    this.element.classList.add('drag-element')
+    addClass(this.element, 'drag-element')
     this.element.style.position = 'fixed'
     this.element.style['z-index'] = 9998
 
@@ -191,8 +189,8 @@ class DragElement {
 
   updatePosition(event) {
     // console.log({x: event.pageX, y: event.pageY})
-    this.element.style.top = (event.pageY - document.body.scrollTop) + 'px'
-    this.element.style.left = (event.pageX - document.body.scrollLeft) + 'px'
+    this.element.style.top = (event.clientY /*- document.body.scrollTop*/ ) + 'px'
+    this.element.style.left = (event.clientX /*- document.body.scrollLeft*/ ) + 'px'
   }
 
   remove() {
@@ -225,13 +223,8 @@ class Draggable {
     })
 
     forEach(zones, function(zone) {
-      let newEvent = Object.create(event, {
-          target: {
-            value: zone.element
-          }
-        })
-        // event.target = zone.element
-      zone.update(newEvent, that.data)
+      event.zoneTarget = zone.element
+      zone.update(event, that.data)
     })
 
     forEach(dropZones[name], function(zone) {
@@ -260,14 +253,14 @@ class Draggable {
     }
   }
 
-  drop(event) {
+  drop(event, target) {
     var name = this.name
-    var dropZoneElement = event.target.closest( '.drop-zone')
+    var dropZoneElement = Closest(target, '.drop-zone')
     var activeZones = filter(dropZones[name], function(zone) {
       return zone.active
     })
     var winningDropZone = filter(activeZones, function(zone) {
-      return zone.$element === dropZoneElement
+      return zone.element === dropZoneElement
     })[0]
 
     forEach(dropZones[name].concat(eventZones[name]), function(zone) {
@@ -279,7 +272,7 @@ class Draggable {
     })
 
     if (this.dragEnd) {
-      this.dragEnd(this.data, event)
+      this.dragEnd(this.data, event, target)
     }
 
     if (winningDropZone && winningDropZone.drop) {
@@ -302,7 +295,7 @@ ko.utils.extend(ko.bindingHandlers, {
         accepts.push(options.name)
       }
 
-      element.addClass('drop-zone')
+      addClass(element, 'drop-zone')
 
       var zone = new DropZone({
         element: element,
@@ -369,18 +362,19 @@ ko.utils.extend(ko.bindingHandlers, {
       })
 
       function matchInput(el) {
-        if (!el.matches('button') || !el.matches('textarea') || !el.matches('input')) {
+        if (!Matches(el, 'button') || !Matches(el, 'textarea') || !Matches(el, 'input')) {
           return false
         }
         return true
       }
 
       function createCloneProxyElement() {
-        var dragProxy = element.cloneNode(true)
+        let dragProxy = element.cloneNode(true)
+        let style = window.getComputedStyle(element)
         element.parentNode.appendChild(dragProxy)
 
-        dragProxy.style.height = element.height
-        dragProxy.style.width = element.width
+        dragProxy.style.height = style.height
+        dragProxy.style.width = style.width
         dragProxy.style.opacity = 70 / 100
         dragProxy.style.filter = 'alpha(opacity=70'
 
@@ -448,7 +442,7 @@ ko.utils.extend(ko.bindingHandlers, {
 
               var overlay = document.createElement('div')
 
-              overlay.classList = 'drag-overlay'
+              addClass(overlay, 'drag-overlay')
               overlay.setAttribute('unselectable', 'on')
               overlay.style['z-index'] = 9999
               overlay.style.position = 'fixed'
@@ -456,8 +450,9 @@ ko.utils.extend(ko.bindingHandlers, {
               overlay.style.left = 0
               overlay.style.right = 0
               overlay.style.bottom = 0
-              overlay.style['background-color'] = 'cyan'
-              overlay.style.opacity = 0.1
+              overlay.style.cursor = 'move'
+              overlay.style['background-color'] = '#fff'
+              overlay.style.opacity = 0
               overlay.style.filter = 'alpha(apacity=0)'
               overlay.style['-webkit-user-select'] = 'none'
               overlay.style['-moz-user-select'] = '-moz-none'
@@ -525,14 +520,7 @@ ko.utils.extend(ko.bindingHandlers, {
                 clearTimeout(dragTimer)
                 dragElement.remove()
                 overlay.parentNode.removeChild(overlay)
-
-                let newEvent = Object.create(event, {
-                  target: {
-                    value: document.elementFromPoint(upEvent.clientX, upEvent.clientY)
-                  }
-                });
-
-                draggable.drop(newEvent)
+                draggable.drop(upEvent, document.elementFromPoint(upEvent.clientX, upEvent.clientY))
 
 
                 document.removeEventListener('selectstart', onDocumentSelectStart, false)
